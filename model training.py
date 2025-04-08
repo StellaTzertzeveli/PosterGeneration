@@ -1,98 +1,77 @@
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-import tensorflow as tf
-import tensorflow.keras
-from PIL import Image
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPool2D, Flatten,Dense,Dropout,BatchNormalization
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import cv2
-from tensorflow.keras.layers import Input, Lambda, Dense, Flatten
-from tensorflow.keras.applications import VGG16, InceptionResNetV2
-from tensorflow.keras import regularizers
-from tensorflow.keras.optimizers import Adam,RMSprop,SGD,Adamax
+import numpy as np
+import mediapipe as mp
+from tensorflow.keras.models import load_model
+import time
+import os
 
-train_dir = '../DATASET/TRAIN' #directory with training images
-test_dir = '../Desktop/DATASET/TEST' #directory with testing images
+last_snapshot_time = 0
+cooldown_seconds = 5  # seconden tussen foto's
 
 
-train_datagen = ImageDataGenerator(width_shift_range= 0.1,
-                                  horizontal_flip = True,
-                                  rescale = 1./255,
-                                  validation_split = 0.2)
-test_datagen = ImageDataGenerator(rescale = 1./255,
-                                 validation_split = 0.2)
-train_generator =  train_datagen.flow_from_directory(directory = train_dir,
-                                                    target_size = (75,75),
-                                                    color_mode = 'rgb',
-                                                    class_mode = 'categorical',
-                                                    batch_size = 16,
-                                                    subset = 'training')
-validation_generator  = test_datagen.flow_from_directory(directory = test_dir,
-                                                  target_size = (75,75),
-                                                  color_mode = 'rgb',
-                                                  class_mode = 'categorical',
-                                                  subset = 'validation')
+model = load_model("/Users/nathanschuijt/PycharmProjects/Backgroudnremoval test/saves/pose_model.h5")
+pose_labels = ["Usain", "contraposto", "kamehameha", "micheal_jackson", "sailor_moon"]
 
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu',padding = 'Same', input_shape=(75, 75, 3)),
-    tf.keras.layers.MaxPooling2D(2, 2),
-    tf.keras.layers.Dropout(0.25),
-    #tf.keras.layers.Conv2D(128, (3,3), activation='relu',padding = 'Same'),
-    #tf.keras.layers.MaxPooling2D(2,2),
-    #tf.keras.layers.Dropout(0.25),
-    #tf.keras.layers.Conv2D(128, (3,3), activation='relu',padding = 'Same'),
-    #tf.keras.layers.MaxPooling2D(2,2),
-    #tf.keras.layers.Dropout(0.25),
-    tf.keras.layers.Conv2D(128, (3,3), activation='relu',padding = 'Same'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Dropout(0.25),
-    tf.keras.layers.Conv2D(256, (3,3), activation='relu',padding = 'Same'),
-    tf.keras.layers.MaxPooling2D(2,2),
-    tf.keras.layers.Dropout(0.25),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(1024, activation='relu'),
-    tf.keras.layers.Dropout(0.5),
-    tf.keras.layers.Dense(5, activation='softmax')
-])
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose()
+mp_drawing = mp.solutions.drawing_utils
 
-optimizer = Adam(learning_rate=0.001)
-model.compile(loss='categorical_crossentropy',
-              optimizer = optimizer,
-              metrics=['accuracy'])
-epochs = 50
-batch_size = 16
+save_folder = "snapshots"
+os.makedirs(save_folder, exist_ok=True)
 
-model.summary()
+cap = cv2.VideoCapture(0)
 
-from PIL import ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES = True
+def extract_live_landmarks(image):
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    results = pose.process(image_rgb)
+    if results.pose_landmarks:
+        landmarks = []
+        for lm in results.pose_landmarks.landmark:
+            landmarks.extend([lm.x, lm.y, lm.z])
+        return np.array(landmarks), results
+    else:
+        return None, results
 
-history = model.fit(train_generator, epochs = epochs,validation_data = validation_generator)
+print("Start webcam. Poses worden herkend...")
 
-fig , ax = plt.subplots(1,2)
-train_acc = history.history['accuracy']
-train_loss = history.history['loss']
-fig.set_size_inches(12,4)
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-ax[0].plot(history.history['accuracy'])
-ax[0].plot(history.history['val_accuracy'])
-ax[0].set_title('Training Accuracy vs Validation Accuracy')
-ax[0].set_ylabel('Accuracy')
-ax[0].set_xlabel('Epoch')
-ax[0].legend(['Train', 'Validation'], loc='upper left')
+    landmarks, results = extract_live_landmarks(frame)
 
-ax[1].plot(history.history['loss'])
-ax[1].plot(history.history['val_loss'])
-ax[1].set_title('Training Loss vs Validation Loss')
-ax[1].set_ylabel('Loss')
-ax[1].set_xlabel('Epoch')
-ax[1].legend(['Train', 'Validation'], loc='upper left')
+    if landmarks is not None and len(landmarks) == 99:
+        input_data = np.expand_dims(landmarks, axis=0)
+        prediction = model.predict(input_data)[0]
+        predicted_label_idx = int(np.argmax(prediction))
+        predicted_label = pose_labels[predicted_label_idx]
+        confidence = prediction[predicted_label_idx]
 
-plt.show()
+        label_text = f"{predicted_label} ({confidence:.2f})"
+        cv2.putText(frame, label_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                    (0, 255, 0), 2)
 
-model.save('yoga_pose_model.h5')
+        cv2.putText(frame, f"Detected points: {int(len(landmarks)/3)}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                    (255, 255, 0), 2)
+
+        mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+        # Snapshot alleen als confidence hoog is (bijv. > 0.9) én cooldown voorbij
+        now = time.time()
+        if confidence > 0.9 and (now - last_snapshot_time > cooldown_seconds):
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            filename = os.path.join(save_folder, f"{predicted_label}_{timestamp}.jpg")
+            cv2.imwrite(filename, frame)
+            print(f"📸 {predicted_label} gedetecteerd – snapshot opgeslagen als {filename}")
+            last_snapshot_time = now
+    else:
+        cv2.putText(frame, "⛔ Incomplete or no pose detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+    cv2.imshow("Pose Detection", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
