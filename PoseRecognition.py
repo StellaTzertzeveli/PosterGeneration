@@ -1,15 +1,17 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 import time
 import os
 
 last_snapshot_time = 0
-cooldown_seconds = 5  # seconden tussen foto's
+# sec between pic captures
+cooldown_seconds = 50
 
 
-model = load_model("/Users/nathanschuijt/PycharmProjects/Backgroudnremoval test/saves/pose_model.h5")
+model = load_model("model/test_model.h5")
 pose_labels = ["Usain", "contraposto", "kamehameha", "micheal_jackson", "sailor_moon"]
 
 mp_pose = mp.solutions.pose
@@ -20,6 +22,9 @@ save_folder = "snapshots"
 os.makedirs(save_folder, exist_ok=True)
 
 cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Error: Camera not accessible")
+    exit()
 
 def extract_live_landmarks(image):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -32,7 +37,7 @@ def extract_live_landmarks(image):
     else:
         return None, results
 
-print("Start webcam. Poses worden herkend...")
+print("Start webcam. pls pose..")
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -57,18 +62,23 @@ while cap.isOpened():
 
         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-        # Snapshot alleen als confidence hoog is (bijv. > 0.9) én cooldown voorbij
+
         now = time.time()
         if confidence > 0.9 and (now - last_snapshot_time > cooldown_seconds):
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             filename = os.path.join(save_folder, f"{predicted_label}_{timestamp}.jpg")
             cv2.imwrite(filename, frame)
-            print(f"📸 {predicted_label} gedetecteerd – snapshot opgeslagen als {filename}")
+            print(f"📸 {predicted_label} detected – saved as {filename}")
             last_snapshot_time = now
     else:
         cv2.putText(frame, "⛔ Incomplete or no pose detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
     cv2.imshow("Pose Detection", frame)
+    # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # plt.imshow(frame_rgb)
+    # plt.axis('off')
+    # plt.title("Pose Detection")
+    # plt.show()
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
