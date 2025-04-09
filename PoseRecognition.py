@@ -74,11 +74,6 @@ while cap.isOpened():
         cv2.putText(frame, "⛔ Incomplete or no pose detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
     cv2.imshow("Pose Detection", frame)
-    # frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    # plt.imshow(frame_rgb)
-    # plt.axis('off')
-    # plt.title("Pose Detection")
-    # plt.show()
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
