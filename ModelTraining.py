@@ -1,3 +1,7 @@
+"""this program creates and trains a cnn model to classify which pose a user is doing.
+the dataset (created by us) of 5 different poses, is passed through mediapipe to extract the pose landmarks,
+so the model is trained on the pose landmarks instead of the images."""
+
 import os
 import cv2
 import random
@@ -51,9 +55,7 @@ def augment_image(image):
     # Resizing (extra) (h=32, w=32)
     resized = cv2.resize(image, (32, 32))
     augmented_images.append(resized)
-
     return augmented_images
-
 
 
 #extracting pose landmarks from mediapiipe
