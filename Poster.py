@@ -14,11 +14,11 @@ class Poster:
     save_folder = "posters"
 
     bg_label = {
-        0: "backgrounds/dragonball.png",  # for kamehameha
-        1: "backgrounds/museum.png",  # for contraposto
-        2: "backgrounds/Sailor_moon.png",  # for sailor_moon
-        3: "backgrounds/stage.png",  # for michael_jackson
-        4: "backgrounds/usain.png"  # for usain_bolt
+        "kamehameha": "backgrounds/dragonball.png",  # for kamehameha
+        "contraposto": "backgrounds/museum.png",  # for contraposto
+        "sailor_moon": "backgrounds/Sailor_moon.png",  # for sailor_moon
+        "michael_jackson": "backgrounds/stage.png",  # for michael_jackson
+        "usain_bolt": "backgrounds/usain.png"  # for usain_bolt
     }
 
     def __init__(self, person_cutout, img_label):
@@ -32,20 +32,21 @@ class Poster:
         self.person = Image.open(person_cutout)
         self.img_label = img_label
 
-        self.width = self.person.shape[1]
-        self.height = self.person.shape[0]
+        self.width = self.person.size[1]
+        self.height = self.person.size[0]
 
-        # Default position and scale for overlay
-        self.pose_pos = [self.width // 2, self.height // 2]  # Centered
+        # Default position (center) and scale for overlay
+        self.pose_pos = [self.width // 2, self.height // 2]
         self.pose_scale = 1.0
 
 
     def background(self):
         #checks label of image to select the correct background and returns it
 
+        #first see if label in dictionary
         if self.img_label not in self.bg_label:
             print("No background selected.")
-            raise ValueError("Invalid label. Must be an integer between 0 and 4.")
+            raise ValueError(f"Invalid label '{self.img_label}'. Must be one of: {list(self.bg_label.keys())}")
 
         bg_file = self.bg_label[self.img_label]
         background_path = os.path.join(self.background_folder, bg_file)

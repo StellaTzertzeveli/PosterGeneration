@@ -12,9 +12,11 @@ import matplotlib.pyplot as plt
 
 class RemoveBackground:
     # # Load the input image
-    # input_path = "fish.webp"
+    # input_path = "whatever_png"
     # with open(input_path, "rb") as input_file:
     #     input_data = input_file.read()
+
+
     def __init__(self, image):
         self.pose_with_bg = image
 
@@ -56,7 +58,7 @@ class RemoveBackground:
         # convert to rgb for saveing but keep bg trans
         fixed_colors = bgra.copy()
         fixed_colors[..., :3] = cv2.cvtColor(fixed_colors[..., :3], cv2.COLOR_BGR2RGB)
-        cv2.imwrite("fix.png", fixed_colors)
+        cv2.imwrite("final_pose.png", fixed_colors)
         return bgra, fixed_colors
 
     def show_final_img(self, bgra):
