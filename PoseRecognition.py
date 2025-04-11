@@ -111,10 +111,14 @@ def detect_pose():
                 filename = f"{save_folder}/{label}{int(time.time())}.jpg"
                 cv2.imwrite(filename, snapshot_frame)
 
+                cv2.imshow("Pose Detection", frame)
+
+
                 print(f"Pose '{label}' captured and saved")
 
                 cv2.putText(snapshot_frame, "Pose detected!", (200, 600),
                             cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
+
             else:
                 cv2.putText(snapshot_frame, "Image NOT saved: not enough landmarks or low confidence", (10, 600),
                             cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 4)
