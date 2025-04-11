@@ -145,6 +145,7 @@ class Poster:
 
         # Run the GUI loop
         root.mainloop()
+        return canvas
 
     def add_title(self, text: str, font: str = "arial.ttf", size: int = 32):
         """Get user input (probably a name or title) and add it as a title to the top of the poster."""
