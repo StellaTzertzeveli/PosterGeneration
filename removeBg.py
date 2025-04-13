@@ -8,27 +8,21 @@ from PIL import Image
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import os
+import time
 
 
 class RemoveBackground:
-    # # Load the input image
-    # input_path = "whatever_png"
-    # with open(input_path, "rb") as input_file:
-    #     input_data = input_file.read()
-
 
     def __init__(self, image):
-        self.pose_with_bg = image
+        self.pose_with_bg = Image.open(image)
 
     def remove_background(self):
         # Remove the background
         output_img = remove(self.pose_with_bg)
 
-        # Convert the output to a PIL image
-        output_pil = Image.open(BytesIO(output_img))
-
         # Convert the PIL image to a NumPy array (RGB format)
-        output_array = np.array(output_pil)
+        output_array = np.array(output_img)
 
         # Convert RGB to BGR for OpenCV
         final_bl_img = cv2.cvtColor(output_array, cv2.COLOR_RGB2BGR)
@@ -43,7 +37,7 @@ class RemoveBackground:
         plt.show()
 
 
-    def final_trans_img(self, final_bl_img):
+    def final_trans_img(self, final_bl_img, label):
         """if the bgr channels are all black/zero then make black_mask true.
         so make the alpha channel 255 (fully transparent) otherwise zero.
         Then it adds that channel onto the new image."""
@@ -58,7 +52,10 @@ class RemoveBackground:
         # convert to rgb for saveing but keep bg trans
         fixed_colors = bgra.copy()
         fixed_colors[..., :3] = cv2.cvtColor(fixed_colors[..., :3], cv2.COLOR_BGR2RGB)
-        cv2.imwrite("final_pose.png", fixed_colors)
+
+        # Save the image with transparent background in no_bg_images folder
+        filename = os.path.join("no_bg_images", f"{int(time.time())}_{label}.png")
+        cv2.imwrite(filename, bgra)
         return bgra, fixed_colors
 
     def show_final_img(self, bgra):
@@ -68,3 +65,4 @@ class RemoveBackground:
         plt.title("final trans img")
         plt.axis('off')
         plt.show()
+

@@ -48,23 +48,27 @@ class PoseRec:
         visibility_threshold = 0.5
 
         if results.pose_landmarks and len(results.pose_landmarks.landmark) >= 20:
-            landmarks = []
+            # Initialize a zero-filled array of size 99 cuz otherize its not working because we 2D detect but mediapipe is expecting 3D landmarks
+            landmarks = np.zeros(99)
             all_visible = True
-            for lm in results.pose_landmarks.landmark:
+
+            for i, lm in enumerate(results.pose_landmarks.landmark):
                 if lm.visibility < visibility_threshold:
                     all_visible = False
-                landmarks.extend([lm.x, lm.y])
+                if i < 33:  # Ensure we don't exceed the expected number of landmarks
+                    landmarks[i * 3:i * 3 + 3] = [lm.x, lm.y, lm.z]
 
             if all_visible:
                 landmarks = np.array(landmarks)
                 normalized = self.normalize_landmarks(landmarks)
                 return normalized, results
 
-        return results
+        return None, results
 
     def detect_pose(self):
         start_time = time.time()
         confidence = 0
+        label = "No pose detected"
 
         while time.time() - start_time < 10:
             #once 10 seconds pass, capture a frame with webcam
@@ -96,6 +100,7 @@ class PoseRec:
                 if confidence > 0.9:
                     # confidence is high enough, show the label
                     label_text = f"{self.pose_labels[predicted_label_idx]} ({confidence:.2f})"
+                    label = self.pose_labels[predicted_label_idx]
                 else:
                     label_text = "Confidence too low"
             else:
@@ -134,10 +139,9 @@ class PoseRec:
                     predicted_label_idx = np.argmax(pose_prediction)
                     label = self.pose_labels[predicted_label_idx]
 
-                    # save the image with the label
-                    filename = f"{self.save_folder}/{label}{int(time.time())}.jpg"
+                    # save the image with the time+label
+                    filename = f"{self.save_folder}/{int(time.time())}{label}.jpg"
                     cv2.imwrite(filename, snapshot_frame)
-
                     print(f"Pose '{label}' captured and saved")
 
                     # show success message
@@ -150,14 +154,17 @@ class PoseRec:
 
                 # show the snapshot
                 cv2.imshow("Pose Detection", snapshot_frame)
-                return label
                 cv2.waitKey(2000)
 
+
             cv2.imshow("Pose Detection", frame)
+
 
             if cv2.waitKey(1) == ord('q'):
                 # quit the program if 'q' is pressed
                 break
+
+        return label
 
     def run(self):
         while self.cap.isOpened():
@@ -175,7 +182,7 @@ class PoseRec:
             if key == ord(' '):
                 # pressing space to start pose detection with countdown
                 final_label = self.detect_pose()
-                return frame, final_label
+                return final_label
             else:
                 # show instructions to start pose detection while space isnt pressed
                 cv2.putText(frame, "PRESS SPACE TO START: YOU HAVE 10 SECONDS TO DO A POSE", (10, 30),
@@ -185,4 +192,3 @@ class PoseRec:
 
         self.cap.release()
         cv2.destroyAllWindows()
-

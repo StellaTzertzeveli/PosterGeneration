@@ -89,8 +89,7 @@ def process_dataset(image_folder, label):
     return np.array(X), np.array(y)
 
 
-def data():
-    base_path = "DATA"
+def data_split(base_path):
     X0, y0 = process_dataset(os.path.join(base_path, "UsainBolt"), label=0)
     X1, y1 = process_dataset(os.path.join(base_path, "contraposto"), label=1)
     X2, y2 = process_dataset(os.path.join(base_path, "kamehameha"), label=2)
@@ -102,19 +101,6 @@ def data():
 
     return X_train, y_train
 
-def test_data():
-    base_path = "TEST_DATA"
-
-    x0, y0 = process_dataset(os.path.join(base_path, "UsainBolt"), label=0)
-    x1, y1 = process_dataset(os.path.join(base_path, "contraposto"), label=1)
-    x2, y2 = process_dataset(os.path.join(base_path, "kamehameha"), label=2)
-    x3, y3 = process_dataset(os.path.join(base_path, "michael_jackson"), label=3)
-    x4, y4 = process_dataset(os.path.join(base_path, "sailor_moon"), label=4)
-
-    X_test = np.concatenate((x0, x1, x2, x3, x4), axis=0)
-    y_test = np.concatenate((y0, y1, y2, y3, y4), axis=0)
-
-    return X_test, y_test
 
 # normalize landmark coordinates (for consistency)
 def normalize_landmarks(landmarks):
@@ -184,7 +170,7 @@ def validate_model(X_train, X_test, y_train, y_test, model):
     # consufion matrix
     y_pred = np.argmax(model.predict(X_test), axis=1)
     cm = confusion_matrix(y_test, y_pred)
-    labels = ["Usain", "contraposto", "kamehameha", "micheal_jackson", "sailor_moon"]
+    labels = ["Us", "cont", "db", "mj", "sailor"]
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
     disp.plot()
     plt.show()
@@ -193,8 +179,8 @@ def validate_model(X_train, X_test, y_train, y_test, model):
 def main():
 
     # Load and process the data
-    X_train, y_train = data()
-    X_test, y_test = test_data()
+    X_train, y_train = data_split(base_path = "DATA")
+    X_test, y_test = data_split(base_path = "TEST_DATA")
 
     # Build the model
     model_instance = model(X_train)
