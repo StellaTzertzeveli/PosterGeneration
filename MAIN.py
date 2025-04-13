@@ -30,18 +30,15 @@ def main():
     # Step 2: use removeBg
     removeBg = RemoveBackground(most_recent_pose_path)
     black_image = removeBg.remove_background()
-    person_coutout, trans_image = removeBg.final_trans_img(black_image, label)
-    print(f"Background removed: {removeBg.show_final_img(trans_image)}")
+    person_cutout, fixed_colors = removeBg.final_trans_img(black_image, label)
+    print(f"Background removed: {removeBg.show_final_img(fixed_colors)}")
 
 
     # Step 3: make the Poster
     most_recent_no_bg_path = folder_handling(no_bg_folder, og_folder="no_bg_images")
     poster = Poster(most_recent_no_bg_path, label)
-    background = poster.background()
-    while(True):
-        canvas = poster.user_input()
-        title_text = poster.add_title(canvas)
-        poster.refresh_canvas(canvas, background, person_coutout)
+    poster.user_input()
+
 
 
 if __name__ == "__main__":

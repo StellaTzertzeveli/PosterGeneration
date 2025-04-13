@@ -115,7 +115,7 @@ class PoseRec:
                         (0, 255, 0) if confidence > 0.9 else (0, 0, 255), 2)
 
 
-            if countdown > 3:
+            if countdown > 0:
                 # show countdown timer
                 cv2.putText(frame, f"Time left: {countdown}s", (10, 120),
                             cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 0), 5)

@@ -14,11 +14,11 @@ class Poster:
     save_folder = "posters"
 
     bg_label = {
-        "kamehameha": "backgrounds/dragonball.png",  # for kamehameha
-        "contraposto": "backgrounds/museum.png",  # for contraposto
-        "sailor_moon": "backgrounds/Sailor_moon.png",  # for sailor_moon
-        "michael_jackson": "backgrounds/stage.png",  # for michael_jackson
-        "usain_bolt": "backgrounds/usain.png"  # for usain_bolt
+        "kamehameha": "dragonball.png",  # for kamehameha
+        "contraposto": "museum.png",  # for contraposto
+        "sailor_moon": "Sailor_moon.png",  # for sailor_moon
+        "michael_jackson": "stage.png",  # for michael_jackson
+        "usain_bolt": "usain.png"  # for usain_bolt
     }
 
     def __init__(self, person_cutout, img_label):
@@ -29,7 +29,7 @@ class Poster:
         os.makedirs(self.save_folder, exist_ok=True)
 
         # prepared image with user's cutout
-        self.person = Image.open(person_cutout)
+        self.person = Image.open(person_cutout).convert("RGBA")
         self.img_label = img_label
 
         self.width = self.person.size[1]
@@ -64,11 +64,10 @@ class Poster:
         # Resize overlay based on current scale
         resized_overlay = overlay.resize(
             (int(self.width * self.pose_scale), int(self.height * self.pose_scale)),
-            Image.ANTIALIAS
-        )
+            Image.Resampling.LANCZOS).convert("RGBA")
 
         # Ensure overlay is in RGBA mode
-        resized_overlay = resized_overlay.convert("RGBA")
+        # resized_overlay = resized_overlay.convert("RGBA")
 
         # Paste resized pose onto background
         bg_copy = bg.copy()
@@ -85,15 +84,18 @@ class Poster:
         """create a GUI to make the poster.
         user can paste their cutout on the background, select size and position. """
 
-        #get background
-        bg = self.background()
-
         #make interactive display //Tkinter main window
         root = tk.Tk()
-        root.title("Your fab poster!")
+        root.title("Your fab poster! press SPACE to add a title. Press 1 to save it.")
 
-        #canvas for displaying images
-        canvas = tk.Canvas(root, width=bg.width, height=bg.height)
+        bg = self.background()
+        scale_factor = 0.4  # Adjust this value to control the canvas size
+        canvas_width = int(bg.width * scale_factor)
+        canvas_height = int(bg.height * scale_factor)
+        bg = bg.resize((canvas_width, canvas_height), Image.Resampling.LANCZOS)
+
+        # Canvas for displaying images
+        canvas = tk.Canvas(root, width=canvas_width, height=canvas_height)
         canvas.pack()
 
 
@@ -128,17 +130,24 @@ class Poster:
             """Prompt user for text input and add it as a title."""
             text = tk.simpledialog.askstring("Input", "Enter title for the poster:")
             if text:
-                self.add_title(text)
+                self.add_title(text, canvas_width, canvas_height)
                 print(f"Title added: {text}")
+
+        def save_poster_event(event):
+            """Save the poster when '1' is pressed."""
+            self.save_poster()
 
         # Bind keys to functions
         root.bind("<Left>", move_left)
         root.bind("<Right>", move_right)
         root.bind("<Up>", move_up)
         root.bind("<Down>", move_down)
-        root.bind("<plus>", zoom_in)  # Use '+' key for zoom in
+        root.bind("<equal>", zoom_in)  # Use '=' key for zoom in
         root.bind("<minus>", zoom_out)  # Use '-' key for zoom out
-        root.bind("<t>", add_text) # Use 't' key to add text
+        root.bind("<t>", add_text)  # Use 't' key to add text
+        root.bind("<space>", add_text)  # Use 'space' key to add text
+        root.bind("1", save_poster_event)  # Use '1' key to save the poster
+
 
         # Initial render of canvas
         self.refresh_canvas(canvas, bg, self.person)
@@ -147,27 +156,33 @@ class Poster:
         root.mainloop()
         return canvas
 
-    def add_title(self, text: str, font: str = "arial.ttf", size: int = 32):
-        """Get user input (probably a name or title) and add it as a title to the top of the poster."""
-        bg = self.background()  # Get the background image
-        draw = ImageDraw.Draw(bg)
+    def add_title(self, text, cw, ch):
+        """Add a title to the poster at the top."""
+        # Create a drawing context
+        draw = ImageDraw.Draw(self.poster)
 
-        # Load the font
-        try:
-            font = ImageFont.truetype(font, size)
-        except IOError:
-            font = ImageFont.load_default()  # Fallback to default font if not found
+        # Load a font (adjust the path and size as needed)
+        font = ImageFont.truetype("arial.ttf", size=40)
 
-        # Calculate text position (centered at the top)
-        text_width, text_height = draw.textsize(text, font=font)
-        position = ((bg.width - text_width) // 2, 10)  # 10px padding from the top
+        # Calculate text size using textbbox
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
 
-        # Draw the text
-        draw.text(position, text, fill="white", font=font)
+        # Position the text at the top of the poster
+        text_x = (cw - text_width) // 2
+        text_y = (ch - text_height) // 5
 
-        # Save the updated poster with the title
-        poster_path = os.path.join(self.save_folder, "final_poster_with_title.png")
-        bg.save(poster_path)
-        print(f"✅ Poster with title saved as '{poster_path}'")
+        # Add the text to the poster
+        draw.text((text_x, text_y), text, font=font, fill="black")
 
+    def save_poster(self):
+        """Save the poster with the title to the save folder.
+        activated after 1 is pressed"""
+        if hasattr(self, "final_poster"):
+            poster_path = os.path.join(self.save_folder, "final_poster_with_title.png")
+            self.final_poster.save(poster_path)
+            print(f"✅ Poster saved as '{poster_path}'")
+        else:
+            print("⚠️ No poster to save. Add a title first.")
 

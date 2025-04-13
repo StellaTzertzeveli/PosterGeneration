@@ -49,7 +49,7 @@ class RemoveBackground:
         # Stack arrays in sequence depth wise
         bgra = np.dstack((final_bl_img, alpha))
 
-        # convert to rgb for saveing but keep bg trans
+        # convert to rgb for viewing but keep bg trans
         fixed_colors = bgra.copy()
         fixed_colors[..., :3] = cv2.cvtColor(fixed_colors[..., :3], cv2.COLOR_BGR2RGB)
 
@@ -58,10 +58,10 @@ class RemoveBackground:
         cv2.imwrite(filename, bgra)
         return bgra, fixed_colors
 
-    def show_final_img(self, bgra):
+    def show_final_img(self, fixed_colors):
         # !!! plt used RGB but cv2 uses BGR
         # Display the final image
-        plt.imshow(bgra)
+        plt.imshow(fixed_colors)
         plt.title("final trans img")
         plt.axis('off')
         plt.show()
