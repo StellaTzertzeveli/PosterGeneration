@@ -5,6 +5,8 @@ from PoseRecognition import PoseRec
 from removeBg import RemoveBackground
 from Poster import Poster
 import os
+import serial
+import time
 
 def folder_handling(save_folder, og_folder):
     # get the latest image in the 'snapshots' folder
@@ -18,26 +20,31 @@ def folder_handling(save_folder, og_folder):
 
 
 def main():
-    # Step 1: Run PoseRecognition and get + classify the user pose
+
+    #fetching arduino input
+    arduino = serial.Serial('COM7', 9600, timeout=1)
+    time.sleep(2)
+    print("Connected Arduino.")
+
+    #Run PoseRecognition and get + classify the user pose
     model = "model/test_model.h5"
     pose_folder = "snapshots"
     no_bg_folder = "no_bg_images"
     poseRec = PoseRec(model, pose_folder)
-    label = poseRec.run()
+    label = poseRec.run(serial_connection = arduino)
     most_recent_pose_path = folder_handling(pose_folder, og_folder= "snapshots")
 
 
-    # Step 2: use removeBg
+    #use removeBg
     removeBg = RemoveBackground(most_recent_pose_path)
     black_image = removeBg.remove_background()
     person_cutout, fixed_colors = removeBg.final_trans_img(black_image, label)
     print(f"Background removed: {removeBg.show_final_img(fixed_colors)}")
 
-
-    # Step 3: make the Poster
+    #make the Poster
     most_recent_no_bg_path = folder_handling(no_bg_folder, og_folder="no_bg_images")
     poster = Poster(most_recent_no_bg_path, label)
-    poster.user_input()
+    poster.user_input(serial_connection=arduino)
 
 
 

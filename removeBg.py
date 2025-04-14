@@ -19,13 +19,38 @@ class RemoveBackground:
 
     def remove_background(self):
         # Remove the background
-        output_img = remove(self.pose_with_bg)
 
-        # Convert the PIL image to a NumPy array (RGB format)
+        #alpha matting is improving the segmentation of the pose
+        output_img = remove(self.pose_with_bg, alpha_matting=True, alpha_matting_foreground_threshold=270,
+                            alpha_matting_background_threshold=20, alpha_matting_erode_size=11)
+
+        # Convert the PIL image to a NumPy array (for RGB format)
         output_array = np.array(output_img)
 
+        # Convert RGB to grayscale
+        gray = cv2.cvtColor(output_array, cv2.COLOR_RGB2GRAY)
+
+        # binary thresholding (basically creates a binary mask where the pose is white, and the background is black)
+        _, binary = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+
+        # morphological closing to fill small holes
+        #Closing fills small holes in the pose and smoothens boundaries
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        closed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+
+        # Find contours and keep the largest one
+        #fill in a mask sized as binary dimensions with black
+        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(closed)
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            cv2.drawContours(mask, [largest_contour], -1, 255, thickness=cv2.FILLED)
+
+        # Apply the mask to the original image
+        silhouette = cv2.bitwise_and(output_array, output_array, mask=mask)
+
         # Convert RGB to BGR for OpenCV
-        final_bl_img = cv2.cvtColor(output_array, cv2.COLOR_RGB2BGR)
+        final_bl_img = cv2.cvtColor(silhouette, cv2.COLOR_RGB2BGR)
         return final_bl_img
 
     def show_bl_img(self, final_bl_img):

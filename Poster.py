@@ -8,6 +8,9 @@ import os
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import tkinter as tk #for the GUI
 import tkinter.simpledialog as dialog
+import time
+import subprocess
+
 
 class Poster:
     # folder for finalized posters
@@ -66,8 +69,6 @@ class Poster:
             (int(self.width * self.pose_scale), int(self.height * self.pose_scale)),
             Image.Resampling.LANCZOS).convert("RGBA")
 
-        # Ensure overlay is in RGBA mode
-        # resized_overlay = resized_overlay.convert("RGBA")
 
         # Paste resized pose onto background
         bg_copy = bg.copy()
@@ -80,7 +81,7 @@ class Poster:
         canvas.create_image(0, 0, anchor=tk.NW, image=tk_image)
 
 
-    def user_input(self):
+    def user_input(self, serial_connection=None):
         """create a GUI to make the poster.
         user can paste their cutout on the background, select size and position. """
 
@@ -107,22 +108,17 @@ class Poster:
             self.refresh_canvas(canvas, bg, self.person)
 
         def move_right(event):
-            self.pose_pos[0] = min(bg.width - self.width * self.pose_scale, self.pose_pos[0] + 10)
+            self.pose_pos[0] = min(bg.width - self.width * self.pose_scale, self.pose_pos[0])
             self.refresh_canvas(canvas, bg, self.person)
 
         def move_up(event):
             self.pose_pos[1] = max(0, self.pose_pos[1] - 10)
             self.refresh_canvas(canvas, bg, self.person)
 
+        def move_down(event):
             self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] + 10)
             self.refresh_canvas(canvas, bg, self.person)
 
-        def move_down(event):
-            self.pose_pos[1] = max(0, self.pose_pos[1] + 10)
-            self.refresh_canvas(canvas, bg, self.person)
-
-            self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] - 10)
-            self.refresh_canvas(canvas, bg, self.person)
 
         def zoom_in(event):
             self.pose_scale = min(2.0, self.pose_scale + 0.1)  # Limit to 2x scale
@@ -137,12 +133,14 @@ class Poster:
             """Prompt user for text input and add it as a title."""
             text = tk.simpledialog.askstring("Input", "Enter title for the poster:")
             if text:
-                self.add_title(text, canvas_width, canvas_height, canvas)
+                new_bg = self.add_title(text, canvas_width, canvas_height, bg)
                 print(f"Title added: {text}")
+                self.refresh_canvas(canvas, new_bg, self.person)
+
 
         def save_poster_event(event):
             """Save the poster when '1' is pressed."""
-            self.save_poster()
+            self.save_poster(canvas)
 
         # Bind keys to functions
         root.bind("<Left>", move_left)
@@ -155,6 +153,29 @@ class Poster:
         root.bind("<space>", add_text)  # Use 'space' key to add text
         root.bind("1", save_poster_event)  # Use '1' key to save the poster
 
+        def poll_serial(event):
+            if serial_connection and serial_connection.in_waiting > 0:
+                line = serial_connection.readline().decode("utf-8").strip()
+                print(f"Arduino said: {line}")
+
+                if line == "left":
+                    move_left()
+                elif line == "right":
+                    move_right()
+                elif line == "up":
+                    move_up()
+                elif line == "down":
+                    move_down()
+                elif line == "green_pressed":
+                    save_poster_event()
+                elif line == "white_pressed":
+                    add_text()
+
+            # Schedule this function again after 100ms
+            root.after(100, poll_serial)
+            # Start polling Arduino input
+        poll_serial()
+
 
         # Initial render of canvas
         self.refresh_canvas(canvas, bg, self.person)
@@ -163,13 +184,13 @@ class Poster:
         root.mainloop()
         return canvas
 
-    def add_title(self, text, cw, ch, canvas):
+    def add_title(self, text, cw, ch, bg):
         """Add a title to the poster at the top."""
         # Create a drawing context
-        draw = ImageDraw.Draw(canvas)
+        draw = ImageDraw.Draw(bg)
 
         # Load a font (adjust the path and size as needed)
-        font = ImageFont.truetype("arial.ttf", size=40)
+        font = ImageFont.truetype("arial.ttf", size=60)
 
         # Calculate text size using textbbox
         text_bbox = draw.textbbox((0, 0), text, font=font)
@@ -178,18 +199,70 @@ class Poster:
 
         # Position the text at the top of the poster
         text_x = (cw - text_width) // 2
-        text_y = (ch - text_height) // 5
+        text_y = (ch - text_height) // 6
 
         # Add the text to the poster
         draw.text((text_x, text_y), text, font=font, fill="black")
+        return bg
 
-    def save_poster(self):
-        """Save the poster with the title to the save folder.
-        activated after 1 is pressed"""
-        if hasattr(self, "final_poster"):
-            poster_path = os.path.join(self.save_folder, "final_poster_with_title.png")
-            self.final_poster.save(poster_path)
-            print(f"✅ Poster saved as '{poster_path}'")
-        else:
-            print("⚠️ No poster to save. Add a title first.")
+    #gs_path = r"C:\Program Files\gs\gs10.05.0\bin\gswin64.exe"
+            # ps2pdf_path = r"C:\Program Files\gs\gs10.05.0\lib\ps2pdf.bat"
 
+    def save_poster(self, canvas):
+        """Save the poster as PDF with complete verification"""
+        os.makedirs(self.save_folder, exist_ok=True)
+        timestamp = int(time.time())
+        ps_file = os.path.join(self.save_folder, f"temp_{timestamp}.ps")
+        pdf_path = os.path.join(self.save_folder, f"{timestamp}_your_poster.pdf")
+
+        # 1. Save canvas as PostScript (verify it was created)
+        try:
+            canvas.postscript(file=ps_file, colormode="color")
+            if not os.path.exists(ps_file) or os.path.getsize(ps_file) == 0:
+                raise RuntimeError("Failed to create valid PS file")
+        except Exception as e:
+            print(f"❌ Failed to create PS file: {e}")
+            return
+
+        # 2. Conversion to PDF with explicit Ghostscript path
+        try:
+            gs_path = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
+
+            # Run Ghostscript directly (more reliable than ps2pdf)
+            result = subprocess.run(
+                [
+                    gs_path,
+                    "-dBATCH",
+                    "-dNOPAUSE",
+                    "-sDEVICE=pdfwrite",
+                    "-dPDFSETTINGS=/prepress",  # Higher quality settings
+                    f"-sOutputFile={pdf_path}",
+                    ps_file
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                text=True
+            )
+
+            # Verify PDF was actually created
+            if not os.path.exists(pdf_path):
+                error_msg = result.stderr if result.stderr else "No error output"
+                raise RuntimeError(f"Ghostscript ran but no PDF created. Error: {error_msg}")
+
+            print(f"✅ Success! PDF saved to: {pdf_path}")
+            print(f"PDF file size: {os.path.getsize(pdf_path) / 1024:.1f} KB")
+
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Ghostscript failed with error code {e.returncode}")
+            print(f"Error output: {e.stderr}")
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
+        finally:
+            # Clean up temporary PS file
+            if os.path.exists(ps_file):
+                try:
+                    os.remove(ps_file)
+                except Exception as e:
+                    print(f"⚠ Couldn't delete temp file: {e}")

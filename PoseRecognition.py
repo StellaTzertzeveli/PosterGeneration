@@ -30,7 +30,7 @@ class PoseRec:
         os.makedirs(self.save_folder, exist_ok=True)
 
         # Initialize camera
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(1)
         if not self.cap.isOpened():
             raise RuntimeError("Error: Camera not accessible")
 
@@ -150,7 +150,7 @@ class PoseRec:
                 else:
                     # show failure message
                     cv2.putText(snapshot_frame, "Image NOT saved: not enough landmarks or low confidence", (10, 600),
-                                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 4)
+                                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 4)
 
                 # show the snapshot
                 cv2.imshow("Pose Detection", snapshot_frame)
@@ -166,7 +166,7 @@ class PoseRec:
 
         return label
 
-    def run(self):
+    def run(self, serial_connection=None):
         while self.cap.isOpened():
             # read a frame from the camera
             ret, frame = self.cap.read()
@@ -176,10 +176,18 @@ class PoseRec:
 
             # quit anytime
             key = cv2.waitKey(1)
+
+            arduino_trigger = False
+            if serial_connection:
+                line = serial_connection.readline().decode("utf-8").strip()
+                print(f"Arduino said: {line}")
+                if line == "red_pressed":
+                    arduino_trigger = True
+
             if key == ord('q'):
                 # quit the program if 'q' is pressed
                 break
-            if key == ord(' '):
+            if key == ord(' ') or arduino_trigger:
                 # pressing space to start pose detection with countdown
                 final_label = self.detect_pose()
                 return final_label
