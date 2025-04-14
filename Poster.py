@@ -99,6 +99,7 @@ class Poster:
         canvas.pack()
 
 
+
         #key events
 
         def move_left(event):
@@ -113,8 +114,14 @@ class Poster:
             self.pose_pos[1] = max(0, self.pose_pos[1] - 10)
             self.refresh_canvas(canvas, bg, self.person)
 
-        def move_down(event):
             self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] + 10)
+            self.refresh_canvas(canvas, bg, self.person)
+
+        def move_down(event):
+            self.pose_pos[1] = max(0, self.pose_pos[1] + 10)
+            self.refresh_canvas(canvas, bg, self.person)
+
+            self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] - 10)
             self.refresh_canvas(canvas, bg, self.person)
 
         def zoom_in(event):
@@ -130,7 +137,7 @@ class Poster:
             """Prompt user for text input and add it as a title."""
             text = tk.simpledialog.askstring("Input", "Enter title for the poster:")
             if text:
-                self.add_title(text, canvas_width, canvas_height)
+                self.add_title(text, canvas_width, canvas_height, canvas)
                 print(f"Title added: {text}")
 
         def save_poster_event(event):
@@ -156,10 +163,10 @@ class Poster:
         root.mainloop()
         return canvas
 
-    def add_title(self, text, cw, ch):
+    def add_title(self, text, cw, ch, canvas):
         """Add a title to the poster at the top."""
         # Create a drawing context
-        draw = ImageDraw.Draw(self.poster)
+        draw = ImageDraw.Draw(canvas)
 
         # Load a font (adjust the path and size as needed)
         font = ImageFont.truetype("arial.ttf", size=40)
