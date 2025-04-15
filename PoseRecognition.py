@@ -52,7 +52,7 @@ class PoseRec:
 
         if results.pose_landmarks and len(results.pose_landmarks.landmark) >= 20:
             # Initialize a zero-filled array of size 99 cuz otherize its not working because we 2D detect but mediapipe is expecting 3D landmarks
-            landmarks = np.zeros(99)
+            landmarks = np.zeros(66)
             all_visible = True
 
             for i, lm in enumerate(results.pose_landmarks.landmark):
@@ -60,7 +60,7 @@ class PoseRec:
                     all_visible = False
                 if i < 33:
                     # Ensure we don't exceed the expected number of landmarks
-                    landmarks[i * 3:i * 3 + 3] = [lm.x, lm.y, lm.z]
+                    landmarks[i * 2:i * 2 + 2] = [lm.x, lm.y]
 
             if all_visible:
                 landmarks = np.array(landmarks)
