@@ -4,7 +4,7 @@ group 16
 This is a program where a person can create a fun poster of themselves to boost their confidence!
 The project consists of 4 main parts.
 
-1. In ModelTraining.py we are training a CNN model to classify which pose a user is doing.
+1. In ModelTraining.py we are training a sequential model, Neural Network to classify which pose a user is doing.
 The dataset (created by us) of 5 different poses, made by around 60 different people, is passed through mediapipe to extract the pose landmarks,
 and then the model is trained on the pose landmarks instead of the images.
 

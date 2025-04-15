@@ -58,7 +58,7 @@ def augment_image(image):
     return augmented_images
 
 
-#extracting pose landmarks from mediapiipe
+#extracting pose landmarks from mediapipe
 def extract_landmarks(image, pose):
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = pose.process(image_rgb)
@@ -77,7 +77,7 @@ def process_dataset(image_folder, label):
 
     X, y = [], []
     for filename in os.listdir(image_folder):
-        if filename.lower().endswith(('.jpg', '.png')):
+        if filename.lower().endswith(('.jpg')):
             image_path = os.path.join(image_folder, filename)
             image = cv2.imread(image_path)
             augmented = augment_image(image)

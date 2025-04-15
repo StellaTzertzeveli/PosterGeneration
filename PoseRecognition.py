@@ -1,6 +1,6 @@
 """In PoseRecognition.py the model is utilised by the user in real time.
-A camera window pops up and after pressing 'spacebar'
-the user has about 10 seconds to get into one of the 5 poses and snap a picture.
+A camera window pops up and after pressing 'spacebar' or the corresponding button on the box
+the user has 10 seconds to get into one of the 5 poses and snap a picture.
 Then the model classifies which pose the user did and
 returns a picture with its corresponding label."""
 
@@ -37,12 +37,14 @@ class PoseRec:
 
     def normalize_landmarks(self, landmarks):
         #normalize landmark coordinates (for consistency)
+
         max_value = np.max(np.abs(landmarks))
         return landmarks / max_value if max_value != 0 else landmarks
 
 
     def extract_landmarks(self, image):
         #extract landmarks, let the program continue only if more than 20 are visible
+
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.pose.process(image_rgb)
         visibility_threshold = 0.5
@@ -55,7 +57,8 @@ class PoseRec:
             for i, lm in enumerate(results.pose_landmarks.landmark):
                 if lm.visibility < visibility_threshold:
                     all_visible = False
-                if i < 33:  # Ensure we don't exceed the expected number of landmarks
+                if i < 33:
+                    # Ensure we don't exceed the expected number of landmarks
                     landmarks[i * 3:i * 3 + 3] = [lm.x, lm.y, lm.z]
 
             if all_visible:
@@ -75,6 +78,8 @@ class PoseRec:
             #that returns 2 values.
             #ret = boolean,if true, indicates if the frame was captured successfully
             #frame = the image captured, if ret = true
+
+
             ret, frame = self.cap.read()
             if not ret:
                 #frame wasn't captured so skip the rest of loop and try again
@@ -123,7 +128,7 @@ class PoseRec:
             elif countdown > 0:
                 # show countdown number
                 cv2.putText(frame, str(countdown), (800, 700),
-                            cv2.FONT_HERSHEY_SIMPLEX, 10, (255, 255, 0), 12)
+                            cv2.FONT_HERSHEY_SIMPLEX, 10, (255, 255, 0), 10)
 
 
             elif countdown == 0:
@@ -146,11 +151,11 @@ class PoseRec:
 
                     # show success message
                     cv2.putText(snapshot_frame, "Pose detected!", (200, 600),
-                                cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
+                                cv2.FONT_HERSHEY_SIMPLEX, 3, (50, 168, 140), 6)
                 else:
                     # show failure message
                     cv2.putText(snapshot_frame, "Image NOT saved: not enough landmarks or low confidence", (10, 600),
-                                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 4)
+                                cv2.FONT_HERSHEY_SIMPLEX, 2, (168, 50, 137), 4)
 
                 # show the snapshot
                 cv2.imshow("Pose Detection", snapshot_frame)
@@ -167,6 +172,7 @@ class PoseRec:
         return label
 
     def run(self, serial_connection=None):
+
         while self.cap.isOpened():
             # read a frame from the camera
             ret, frame = self.cap.read()
@@ -178,7 +184,7 @@ class PoseRec:
             key = cv2.waitKey(1)
 
             arduino_trigger = False
-            if serial_connection:
+            if serial_connection  and serial_connection.in_waiting > 0:
                 line = serial_connection.readline().decode("utf-8").strip()
                 print(f"Arduino said: {line}")
                 if line == "red_pressed":
@@ -193,8 +199,8 @@ class PoseRec:
                 return final_label
             else:
                 # show instructions to start pose detection while space isnt pressed
-                cv2.putText(frame, "PRESS SPACE TO START: YOU HAVE 10 SECONDS TO DO A POSE", (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.putText(frame, "PRESS SPACE TO START: you have 10 seconds to pose", (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 168, 140), 2)
 
             cv2.imshow("Pose Detection", frame)
 

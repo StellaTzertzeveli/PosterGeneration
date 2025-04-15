@@ -6,7 +6,7 @@
 
 import os
 from PIL import Image, ImageTk, ImageDraw, ImageFont
-import tkinter as tk #for the GUI
+import tkinter as tk
 import tkinter.simpledialog as dialog
 import time
 import subprocess
@@ -16,6 +16,7 @@ class Poster:
     # folder for finalized posters
     save_folder = "posters"
 
+    # dictionary to map labels to background images
     bg_label = {
         "kamehameha": "dragonball.png",  # for kamehameha
         "contraposto": "museum.png",  # for contraposto
@@ -23,6 +24,16 @@ class Poster:
         "michael_jackson": "stage.png",  # for michael_jackson
         "usain_bolt": "usain.png"  # for usain_bolt
     }
+
+    # dictionary to map labels to fonts
+    font_label = {
+        "kamehameha": "db.otf",  # for kamehameha
+        "contraposto": "statue.ttf",  # for contraposto
+        "sailor_moon": "sailor.ttf",  # for sailor_moon
+        "michael_jackson": "michael.otf",  # for michael_jackson
+        "usain_bolt": "usain.ttf"  # for usain_bolt
+    }
+
 
     def __init__(self, person_cutout, img_label):
 
@@ -44,9 +55,9 @@ class Poster:
 
 
     def background(self):
-        #checks label of image to select the correct background and returns it
+        #checks label of image to match background and returns it
 
-        #first see if label in dictionary
+        #is the label in dictionary
         if self.img_label not in self.bg_label:
             print("No background selected.")
             raise ValueError(f"Invalid label '{self.img_label}'. Must be one of: {list(self.bg_label.keys())}")
@@ -62,13 +73,12 @@ class Poster:
 
     def refresh_canvas(self, canvas, bg, overlay):
         """Refresh the canvas with the updated background and overlay.
-        whenever user changes position/ zoom"""
+        whenever user changes things"""
 
         # Resize overlay based on current scale
         resized_overlay = overlay.resize(
             (int(self.width * self.pose_scale), int(self.height * self.pose_scale)),
             Image.Resampling.LANCZOS).convert("RGBA")
-
 
         # Paste resized pose onto background
         bg_copy = bg.copy()
@@ -99,9 +109,7 @@ class Poster:
         canvas = tk.Canvas(root, width=canvas_width, height=canvas_height)
         canvas.pack()
 
-
-
-        #key events
+        #--------KEY events
 
         def move_left(event):
             self.pose_pos[0] = max(0, self.pose_pos[0] - 10)
@@ -119,7 +127,6 @@ class Poster:
             self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] + 10)
             self.refresh_canvas(canvas, bg, self.person)
 
-
         def zoom_in(event):
             self.pose_scale = min(2.0, self.pose_scale + 0.1)  # Limit to 2x scale
             self.refresh_canvas(canvas, bg, self.person)
@@ -128,54 +135,56 @@ class Poster:
             self.pose_scale = max(0.5, self.pose_scale - 0.1)  # Limit to 0.5x scale
             self.refresh_canvas(canvas, bg, self.person)
 
-        # key events
         def add_text(event):
-            """Prompt user for text input and add it as a title."""
+            #Prompt user for text input and add it as a title.
             text = tk.simpledialog.askstring("Input", "Enter title for the poster:")
             if text:
                 new_bg = self.add_title(text, canvas_width, canvas_height, bg)
                 print(f"Title added: {text}")
                 self.refresh_canvas(canvas, new_bg, self.person)
 
-
         def save_poster_event(event):
-            """Save the poster when '1' is pressed."""
+            #Save the poster when '1' is pressed.
             self.save_poster(canvas)
 
         # Bind keys to functions
+        #each of these has a corresponding key on the box
         root.bind("<Left>", move_left)
         root.bind("<Right>", move_right)
         root.bind("<Up>", move_up)
         root.bind("<Down>", move_down)
-        root.bind("<equal>", zoom_in)  # Use '=' key for zoom in
-        root.bind("<minus>", zoom_out)  # Use '-' key for zoom out
-        root.bind("<t>", add_text)  # Use 't' key to add text
-        root.bind("<space>", add_text)  # Use 'space' key to add text
-        root.bind("1", save_poster_event)  # Use '1' key to save the poster
+        root.bind("<equal>", zoom_in)  # Use '=' to zoom in
+        root.bind("<minus>", zoom_out)  # Use '-' to zoom out
+        root.bind("<t>", add_text)  # Use 't' to add text
+        root.bind("<space>", add_text)  # Use 'space' to add text
+        root.bind("1", save_poster_event)  # Use '1' to save the poster
 
-        def poll_serial(event):
+        def poll_serial():
+            # checks if there is data input from the box, and updates when there is
+
             if serial_connection and serial_connection.in_waiting > 0:
-                line = serial_connection.readline().decode("utf-8").strip()
-                print(f"Arduino said: {line}")
 
                 if line == "left":
-                    move_left()
+                    move_left(None)
                 elif line == "right":
-                    move_right()
+                    move_right(None)
                 elif line == "up":
-                    move_up()
+                    move_up(None)
                 elif line == "down":
-                    move_down()
+                    move_down(None)
                 elif line == "green_pressed":
-                    save_poster_event()
+                    save_poster_event(None)
                 elif line == "white_pressed":
-                    add_text()
+                    add_text(None)
+                elif line == "zoom_in":
+                    zoom_in(None)
+                elif line == "zoom_out":
+                    zoom_out(None)
 
             # Schedule this function again after 100ms
             root.after(100, poll_serial)
             # Start polling Arduino input
         poll_serial()
-
 
         # Initial render of canvas
         self.refresh_canvas(canvas, bg, self.person)
@@ -184,13 +193,17 @@ class Poster:
         root.mainloop()
         return canvas
 
+
     def add_title(self, text, cw, ch, bg):
         """Add a title to the poster at the top."""
+
         # Create a drawing context
         draw = ImageDraw.Draw(bg)
 
-        # Load a font (adjust the path and size as needed)
-        font = ImageFont.truetype("arial.ttf", size=60)
+        #get different font depending on the label
+        font_file = self.font_label[self.img_label]
+        font_path = os.path.join("fonts", font_file)
+        font = ImageFont.truetype(font_path, size=80)
 
         # Calculate text size using textbbox
         text_bbox = draw.textbbox((0, 0), text, font=font)
@@ -199,36 +212,42 @@ class Poster:
 
         # Position the text at the top of the poster
         text_x = (cw - text_width) // 2
-        text_y = (ch - text_height) // 6
+        text_y = (ch - text_height) // 7
+
+        #text outline
+        #basically putting the text twice in different colors
+        offsets = [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]
+        for dx, dy in offsets:
+            draw.text((text_x + dx, text_y + dy), text, font=font, fill="white")
 
         # Add the text to the poster
         draw.text((text_x, text_y), text, font=font, fill="black")
         return bg
 
-    #gs_path = r"C:\Program Files\gs\gs10.05.0\bin\gswin64.exe"
-            # ps2pdf_path = r"C:\Program Files\gs\gs10.05.0\lib\ps2pdf.bat"
 
     def save_poster(self, canvas):
-        """Save the poster as PDF with complete verification"""
-        os.makedirs(self.save_folder, exist_ok=True)
+        #Save the poster as PDF
+
+        #paths for saving
         timestamp = int(time.time())
         ps_file = os.path.join(self.save_folder, f"temp_{timestamp}.ps")
-        pdf_path = os.path.join(self.save_folder, f"{timestamp}_your_poster.pdf")
+        pdf_path = os.path.join(self.save_folder, f"{timestamp}_your_poster_as{self.img_label}.pdf")
 
-        # 1. Save canvas as PostScript (verify it was created)
+        # save as postscript file
         try:
             canvas.postscript(file=ps_file, colormode="color")
             if not os.path.exists(ps_file) or os.path.getsize(ps_file) == 0:
                 raise RuntimeError("Failed to create valid PS file")
         except Exception as e:
-            print(f"❌ Failed to create PS file: {e}")
-            return
+            print(f" couldn't make a ps file {e}")
 
-        # 2. Conversion to PDF with explicit Ghostscript path
+
+        # convert to PDF using Ghostscript
         try:
             gs_path = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
 
             # Run Ghostscript directly (more reliable than ps2pdf)
+            #rest of this block of code was generated by DeepSeek by feeding it about 15 different errors our code output
             result = subprocess.run(
                 [
                     gs_path,
