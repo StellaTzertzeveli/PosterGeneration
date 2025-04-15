@@ -10,6 +10,7 @@ import tkinter as tk
 import tkinter.simpledialog as dialog
 import time
 import subprocess
+from textwrap import wrap
 
 
 class Poster:
@@ -112,27 +113,27 @@ class Poster:
         #--------KEY events
 
         def move_left(event):
-            self.pose_pos[0] = max(0, self.pose_pos[0] - 10)
+            self.pose_pos[0] -= 10
             self.refresh_canvas(canvas, bg, self.person)
 
         def move_right(event):
-            self.pose_pos[0] = min(bg.width - self.width * self.pose_scale, self.pose_pos[0])
+            self.pose_pos[0] += 10
             self.refresh_canvas(canvas, bg, self.person)
 
         def move_up(event):
-            self.pose_pos[1] = max(0, self.pose_pos[1] - 10)
+            self.pose_pos[1] -= 10
             self.refresh_canvas(canvas, bg, self.person)
 
         def move_down(event):
-            self.pose_pos[1] = min(bg.height - self.height * self.pose_scale, self.pose_pos[1] + 10)
+            self.pose_pos[1] += 10
             self.refresh_canvas(canvas, bg, self.person)
 
         def zoom_in(event):
-            self.pose_scale = min(2.0, self.pose_scale + 0.1)  # Limit to 2x scale
+            self.pose_scale = min(4.0, self.pose_scale + 0.1)  # Limit to 4x scale
             self.refresh_canvas(canvas, bg, self.person)
 
         def zoom_out(event):
-            self.pose_scale = max(0.5, self.pose_scale - 0.1)  # Limit to 0.5x scale
+            self.pose_scale = max(0.1, self.pose_scale - 0.1)  # Limit to 0.1x scale
             self.refresh_canvas(canvas, bg, self.person)
 
         def add_text(event):
@@ -163,6 +164,8 @@ class Poster:
             # checks if there is data input from the box, and updates when there is
 
             if serial_connection and serial_connection.in_waiting > 0:
+                line = serial_connection.readline().decode("utf-8").strip()
+                print(f"Arduino said: {line}")
 
                 if line == "left":
                     move_left(None)

@@ -30,7 +30,8 @@ class PoseRec:
         os.makedirs(self.save_folder, exist_ok=True)
 
         # Initialize camera
-        self.cap = cv2.VideoCapture(1)
+        #0 for intergrated, 1 for the external cam
+        self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             raise RuntimeError("Error: Camera not accessible")
 
@@ -81,6 +82,7 @@ class PoseRec:
 
 
             ret, frame = self.cap.read()
+            frame = cv2.flip(frame, 1)  # Mirror the frame horizontally
             if not ret:
                 #frame wasn't captured so skip the rest of loop and try again
                 continue
@@ -176,6 +178,7 @@ class PoseRec:
         while self.cap.isOpened():
             # read a frame from the camera
             ret, frame = self.cap.read()
+            frame = cv2.flip(frame, 1)  # Mirror the frame horizontally
             if not ret:
                 # frame wasn't captured so skip the rest of loop and try again
                 break
