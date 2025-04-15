@@ -65,7 +65,7 @@ def extract_landmarks(image, pose):
     if results.pose_landmarks:
         landmarks = []
         for lm in results.pose_landmarks.landmark:
-            landmarks.extend([lm.x, lm.y, lm.z])
+            landmarks.extend([lm.x, lm.y])
         return np.array(landmarks)
     else:
         return None
