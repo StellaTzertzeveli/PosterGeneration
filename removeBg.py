@@ -18,7 +18,7 @@ class RemoveBackground:
         self.pose_with_bg = Image.open(image)
 
     def remove_background(self):
-        # Remove the background
+        #------- Remove the background
 
         #alpha matting is improving the segmentation of the pose
         output_img = remove(self.pose_with_bg, alpha_matting=True, alpha_matting_foreground_threshold=270,
@@ -63,7 +63,7 @@ class RemoveBackground:
 
 
     def final_trans_img(self, final_bl_img, label):
-        """if the bgr channels are all black/zero then make black_mask true.
+        """if the bgr channels are all black/zero then make black_mask true,
         so make the alpha channel 255 (fully transparent) otherwise zero.
         Then it adds that channel onto the new image."""
 
@@ -85,7 +85,8 @@ class RemoveBackground:
 
     def show_final_img(self, fixed_colors):
         # !!! plt used RGB but cv2 uses BGR
-        # Display the final image
+        #------- Display the final image
+
         plt.imshow(fixed_colors)
         plt.title("final trans img")
         plt.axis('off')
