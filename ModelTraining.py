@@ -173,6 +173,16 @@ def validate_model(X_train, X_test, y_train, y_test, model):
     labels = ["Us", "cont", "db", "mj", "sailor"]
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
     disp.plot()
+    plt.title("Confusion Matrix on Testing Set")
+    plt.show()
+
+    # consufion matrix
+    y_train_pred = np.argmax(model.predict(X_train), axis=1)
+    cm = confusion_matrix(y_train, y_train_pred)
+    labels = ["Us", "cont", "db", "mj", "sailor"]
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+    disp.plot()
+    plt.title("Confusion Matrix on Training Set")
     plt.show()
 
 
